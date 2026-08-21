@@ -12,14 +12,14 @@ public class RateLimitFilter extends OncePerRequestFilter {
  @Override protected void doFilterInternal(HttpServletRequest req,HttpServletResponse res,FilterChain chain)throws ServletException,IOException{
    if("OPTIONS".equals(req.getMethod())){chain.doFilter(req,res);return;}
    String path=req.getRequestURI();int limit=0;long window=60;
-   if((path.equals("/api/auth/login")||path.equals("/api/auth/register"))&&"POST".equals(req.getMethod())){limit=props.loginAttemptsPerFiveMinutes();window=300;}
+   if((path.equals("/api/auth/login")||path.equals("/api/auth/register")||path.equals("/api/auth/owner-access"))&&"POST".equals(req.getMethod())){limit=props.loginAttemptsPerFiveMinutes();window=300;}
    else if(path.startsWith("/api/public/")&&!"GET".equals(req.getMethod()))limit=props.publicMutationsPerMinute();
    if(limit>0&&!allow(key(req,path),limit,window)){res.setStatus(429);res.setContentType(MediaType.APPLICATION_JSON_VALUE);res.getWriter().write("{\"code\":\"RATE_LIMITED\",\"message\":\"Too many requests. Please try again later.\"}");return;}
    chain.doFilter(req,res);
  }
  private String key(HttpServletRequest req,String path){
    String ip=clientIp(req);
-   if(path.equals("/api/auth/login")||path.equals("/api/auth/register"))return ip+":auth";
+   if(path.equals("/api/auth/login")||path.equals("/api/auth/register")||path.equals("/api/auth/owner-access"))return ip+":auth";
    String visitor=req.getHeader("X-Visitor-Id");
    if(visitor!=null&&visitor.matches("[A-Za-z0-9_-]{8,128}"))return ip+":"+visitor+":public";
    return ip+":public";

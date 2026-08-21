@@ -70,15 +70,19 @@ class OwnerJourneyIntegrationTest {
         mvc.perform(put("/api/owner/events/{eventId}/theme", eventId)
                         .cookie(auth)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(json.writeValueAsBytes(Map.of(
-                                "templateKey", "minimal",
-                                "backgroundImageUrl", "http://localhost:8080/api/public/theme-assets/test",
-                                "primaryColor", "#102A56",
-                                "accentColor", "#36A7FF",
-                                "textColor", "#FFFFFF",
-                                "overlayOpacity", 0.35,
-                                "fontFamily", "Inter, sans-serif",
-                                "buttonRadiusPx", 24))))
+                        .content(json.writeValueAsBytes(Map.ofEntries(
+                                Map.entry("templateKey", "minimal"),
+                                Map.entry("backgroundImageUrl", "http://localhost:8080/api/public/theme-assets/test"),
+                                Map.entry("primaryColor", "#102A56"),
+                                Map.entry("accentColor", "#36A7FF"),
+                                Map.entry("textColor", "#FFFFFF"),
+                                Map.entry("overlayOpacity", 0.35),
+                                Map.entry("fontFamily", "Inter, sans-serif"),
+                                Map.entry("buttonRadiusPx", 24),
+                                Map.entry("colorMode", "LIGHT"),
+                                Map.entry("backgroundPositionX", 50),
+                                Map.entry("backgroundPositionY", 30),
+                                Map.entry("backgroundFit", "COVER")))))
                 .andExpect(status().isOk());
 
         mvc.perform(get("/api/public/events/{slug}", slug))
@@ -87,6 +91,8 @@ class OwnerJourneyIntegrationTest {
                 .andExpect(jsonPath("$.theme.backgroundImageUrl").value("http://localhost:8080/api/public/theme-assets/test"))
                 .andExpect(jsonPath("$.theme.primaryColor").value("#102A56"))
                 .andExpect(jsonPath("$.theme.accentColor").value("#36A7FF"))
+                .andExpect(jsonPath("$.theme.colorMode").value("LIGHT"))
+                .andExpect(jsonPath("$.theme.backgroundPositionY").value(30))
                 .andExpect(jsonPath("$.namesAr").value("احتفال تجريبي"))
                 .andExpect(jsonPath("$.quoteAr").value("رحلة كاملة لصاحب المناسبة"));
 

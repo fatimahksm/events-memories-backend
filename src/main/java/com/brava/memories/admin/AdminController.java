@@ -12,6 +12,7 @@ public class AdminController {
  @GetMapping("/owners") public List<AdminDtos.Owner> owners(){return admin.owners();}
  @PostMapping("/owners") @ResponseStatus(HttpStatus.CREATED) public AdminDtos.Owner createOwner(@Valid @RequestBody AdminDtos.CreateOwner req){return admin.createOwner(req);}
  @PatchMapping("/owners/{id}/enabled") public AdminDtos.Owner enabled(@PathVariable UUID id,@RequestParam boolean value){return admin.setEnabled(id,value);}
+ @PostMapping("/owners/{id}/access-token/regenerate") public AdminDtos.Owner regenerateAccessToken(@PathVariable UUID id){return admin.regenerateAccessToken(id);}
  @GetMapping("/events") public List<EventDtos.Summary> allEvents(){return eventRepo.findAll().stream().sorted(Comparator.comparing(Event::getCreatedAt).reversed()).map(EventDtos::summary).toList();}
  @GetMapping("/events/page") public AdminDtos.EventPage eventPage(@RequestParam(defaultValue="0") int page,@RequestParam(defaultValue="10") int size){return admin.eventPage(page,size);}
  @PostMapping(value="/theme-assets",consumes=org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE) @ResponseStatus(HttpStatus.CREATED) public AdminDtos.AssetUpload uploadThemeAsset(@RequestPart("file") org.springframework.web.multipart.MultipartFile file){return themeAssets.upload(file);}
