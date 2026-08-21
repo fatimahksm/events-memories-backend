@@ -5,6 +5,10 @@ spring:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/event_memories}
     username: ${DB_USERNAME:postgres}
     password: ${DB_PASSWORD:root}
+    hikari:
+      maximum-pool-size: ${DB_POOL_MAX_SIZE:20}
+      minimum-idle: ${DB_POOL_MIN_IDLE:5}
+      connection-timeout: ${DB_POOL_CONNECTION_TIMEOUT_MS:10000}
   jpa:
     hibernate:
       ddl-auto: validate
@@ -56,8 +60,8 @@ app:
     port: ${CLAMAV_PORT:3310}
     timeout: ${CLAMAV_TIMEOUT:PT2M}
   processing:
-    core-threads: ${MEDIA_PROCESSING_CORE_THREADS:2}
-    max-threads: ${MEDIA_PROCESSING_MAX_THREADS:6}
+    core-threads: ${MEDIA_PROCESSING_CORE_THREADS:4}
+    max-threads: ${MEDIA_PROCESSING_MAX_THREADS:10}
     queue-capacity: ${MEDIA_PROCESSING_QUEUE_CAPACITY:500}
     recovery-batch-size: ${MEDIA_PROCESSING_RECOVERY_BATCH_SIZE:100}
     recovery-delay-ms: ${MEDIA_PROCESSING_RECOVERY_DELAY_MS:60000}
