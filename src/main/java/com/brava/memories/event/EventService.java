@@ -15,7 +15,14 @@ public class EventService {
  public EventService(EventRepository events,AppUserRepository users,AppProperties props){this.events=events;this.users=users;this.props=props;}
  @Transactional(readOnly=true) public Event requirePublic(String slug){Event e=events.findBySlug(slug).orElseThrow(()->new AppException("EVENT_NOT_FOUND","Event not found",HttpStatus.NOT_FOUND));if(e.isExpired()) throw new AppException("EVENT_EXPIRED","This event is no longer accepting guests",HttpStatus.GONE);return e;}
  @Transactional(readOnly=true) public Event requireById(UUID id){return events.findById(id).orElseThrow(()->new AppException("EVENT_NOT_FOUND","Event not found",HttpStatus.NOT_FOUND));}
- @Transactional(readOnly=true) public Event requireOwned(UUID eventId,String principal,boolean admin){Event e=requireById(eventId);if(!admin&&!e.getOwner().getId().toString().equals(principal))throw new AppException("FORBIDDEN","You cannot access this event",HttpStatus.FORBIDDEN);return e;}
+ @Transactional(readOnly=true) public Event requireOwned(UUID eventId,String principal,boolean admin){return requireOwned(eventId,principal,admin,null);}
+ @Transactional(readOnly=true) public Event requireOwned(UUID eventId,String principal,boolean admin,UUID scopedEventId){
+   if(scopedEventId!=null&&!scopedEventId.equals(eventId))throw new AppException("FORBIDDEN","You cannot access this event",HttpStatus.FORBIDDEN);
+   Event e=requireById(eventId);
+   if(!admin&&!e.getOwner().getId().toString().equals(principal))throw new AppException("FORBIDDEN","You cannot access this event",HttpStatus.FORBIDDEN);
+   return e;
+ }
+ @Transactional public Event regenerateAccessToken(UUID id){Event e=requireById(id);e.regenerateAccessToken();return events.save(e);}
  @Transactional public Event create(EventDtos.Create req){AppUser owner=requireEnabledOwner(req.ownerId());return create(owner,req.names(),req.quote(),req.namesAr(),req.quoteAr(),req.eventDate(),req.expiresAt(),req.mediaDeleteAt(),req.slug());}
  @Transactional public Event createWithTheme(EventDtos.Create req,EventDtos.UpdateTheme theme){Event event=create(req);event.updateTheme(theme.templateKey(),theme.backgroundImageUrl(),theme.primaryColor(),theme.accentColor(),theme.textColor(),theme.overlayOpacity(),theme.fontFamily(),theme.buttonRadiusPx(),theme.colorMode(),theme.backgroundPositionX(),theme.backgroundPositionY(),theme.backgroundFit());return event;}
  @Transactional public Event createForOwner(UUID ownerId,EventDtos.OwnerCreate req){AppUser owner=requireEnabledOwner(ownerId);return create(owner,req.names(),req.quote(),req.namesAr(),req.quoteAr(),req.eventDate(),req.expiresAt(),req.mediaDeleteAt(),req.slug());}
