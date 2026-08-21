@@ -4,22 +4,23 @@ import jakarta.servlet.*;import jakarta.servlet.http.*;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
-import java.io.IOException;import java.time.Instant;import java.util.concurrent.*;
+import java.io.IOException;import java.time.Instant;import java.util.Set;import java.util.concurrent.*;
 @Component
 public class RateLimitFilter extends OncePerRequestFilter {
+ private static final Set<String> AUTH_PATHS=Set.of("/api/auth/login","/api/auth/register","/api/auth/owner-access","/api/auth/event-access");
  private final RateLimitProperties props; private final ConcurrentHashMap<String,Window> windows=new ConcurrentHashMap<>();
  public RateLimitFilter(RateLimitProperties props){this.props=props;}
  @Override protected void doFilterInternal(HttpServletRequest req,HttpServletResponse res,FilterChain chain)throws ServletException,IOException{
    if("OPTIONS".equals(req.getMethod())){chain.doFilter(req,res);return;}
    String path=req.getRequestURI();int limit=0;long window=60;
-   if((path.equals("/api/auth/login")||path.equals("/api/auth/register")||path.equals("/api/auth/owner-access"))&&"POST".equals(req.getMethod())){limit=props.loginAttemptsPerFiveMinutes();window=300;}
+   if(AUTH_PATHS.contains(path)&&"POST".equals(req.getMethod())){limit=props.loginAttemptsPerFiveMinutes();window=300;}
    else if(path.startsWith("/api/public/")&&!"GET".equals(req.getMethod()))limit=props.publicMutationsPerMinute();
    if(limit>0&&!allow(key(req,path),limit,window)){res.setStatus(429);res.setContentType(MediaType.APPLICATION_JSON_VALUE);res.getWriter().write("{\"code\":\"RATE_LIMITED\",\"message\":\"Too many requests. Please try again later.\"}");return;}
    chain.doFilter(req,res);
  }
  private String key(HttpServletRequest req,String path){
    String ip=clientIp(req);
-   if(path.equals("/api/auth/login")||path.equals("/api/auth/register")||path.equals("/api/auth/owner-access"))return ip+":auth";
+   if(AUTH_PATHS.contains(path))return ip+":auth";
    String visitor=req.getHeader("X-Visitor-Id");
    if(visitor!=null&&visitor.matches("[A-Za-z0-9_-]{8,128}"))return ip+":"+visitor+":public";
    return ip+":public";

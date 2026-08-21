@@ -22,4 +22,5 @@ public class AdminController {
  @PutMapping("/events/{id}") public EventDtos.Summary updateEvent(@PathVariable UUID id,@Valid @RequestBody EventDtos.Update req){return EventDtos.summary(events.update(id,req));}
  @PutMapping("/events/{id}/theme") public EventDtos.Summary updateTheme(@PathVariable UUID id,@Valid @RequestBody EventDtos.UpdateTheme req){return EventDtos.summary(events.updateTheme(events.requireById(id),req));}
  @PostMapping("/events/{id}/retention/extend") public EventDtos.Summary extendRetention(@PathVariable UUID id,@RequestParam int days){return EventDtos.summary(events.extendRetention(id,days));}
+ @PostMapping("/events/{id}/access-token/regenerate") public EventDtos.Summary regenerateEventAccessToken(@PathVariable UUID id){return EventDtos.summary(events.regenerateAccessToken(id));}
 }

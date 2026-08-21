@@ -1,12 +1,13 @@
 package com.brava.memories.media;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.*;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.jpa.repository.*;
 import org.springframework.data.repository.query.Param;
 import java.time.Instant;
 import java.util.*;
 
-public interface MediaRepository extends JpaRepository<Media, UUID> {
+public interface MediaRepository extends JpaRepository<Media, UUID>, JpaSpecificationExecutor<Media> {
     Page<Media> findByEventIdAndStatusAndVisibilityOrderByCreatedAtDesc(UUID eventId, MediaStatus status, MediaVisibility visibility, Pageable pageable);
     Page<Media> findByEventIdOrderByCreatedAtDesc(UUID eventId, Pageable pageable);
     List<Media> findByEventIdAndStatus(UUID eventId, MediaStatus status);
@@ -23,6 +24,18 @@ public interface MediaRepository extends JpaRepository<Media, UUID> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select m from Media m where m.id = :id")
     Optional<Media> findByIdForUpdate(@Param("id") UUID id);
+
+    static Specification<Media> filtered(UUID eventId, MediaVisibility visibility, Instant from, Instant to) {
+        return (root, query, cb) -> {
+            List<jakarta.persistence.criteria.Predicate> predicates = new ArrayList<>();
+            predicates.add(cb.equal(root.get("event").get("id"), eventId));
+            if (visibility != null) predicates.add(cb.equal(root.get("visibility"), visibility));
+            if (from != null) predicates.add(cb.greaterThanOrEqualTo(root.get("createdAt"), from));
+            if (to != null) predicates.add(cb.lessThanOrEqualTo(root.get("createdAt"), to));
+            if (query != null) query.orderBy(cb.desc(root.get("createdAt")));
+            return cb.and(predicates.toArray(new jakarta.persistence.criteria.Predicate[0]));
+        };
+    }
 
     @Query("""
       select m from Media m
