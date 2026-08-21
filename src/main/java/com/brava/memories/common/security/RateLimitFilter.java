@@ -1,0 +1,30 @@
+package com.brava.memories.common.security;
+import com.brava.memories.config.RateLimitProperties;
+import jakarta.servlet.*;import jakarta.servlet.http.*;
+import org.springframework.http.MediaType;
+import org.springframework.stereotype.Component;
+import org.springframework.web.filter.OncePerRequestFilter;
+import java.io.IOException;import java.time.Instant;import java.util.concurrent.*;
+@Component
+public class RateLimitFilter extends OncePerRequestFilter {
+ private final RateLimitProperties props; private final ConcurrentHashMap<String,Window> windows=new ConcurrentHashMap<>();
+ public RateLimitFilter(RateLimitProperties props){this.props=props;}
+ @Override protected void doFilterInternal(HttpServletRequest req,HttpServletResponse res,FilterChain chain)throws ServletException,IOException{
+   if("OPTIONS".equals(req.getMethod())){chain.doFilter(req,res);return;}
+   String path=req.getRequestURI();int limit=0;long window=60;
+   if((path.equals("/api/auth/login")||path.equals("/api/auth/register"))&&"POST".equals(req.getMethod())){limit=props.loginAttemptsPerFiveMinutes();window=300;}
+   else if(path.startsWith("/api/public/")&&!"GET".equals(req.getMethod()))limit=props.publicMutationsPerMinute();
+   if(limit>0&&!allow(key(req,path),limit,window)){res.setStatus(429);res.setContentType(MediaType.APPLICATION_JSON_VALUE);res.getWriter().write("{\"code\":\"RATE_LIMITED\",\"message\":\"Too many requests. Please try again later.\"}");return;}
+   chain.doFilter(req,res);
+ }
+ private String key(HttpServletRequest req,String path){
+   String ip=clientIp(req);
+   if(path.equals("/api/auth/login")||path.equals("/api/auth/register"))return ip+":auth";
+   String visitor=req.getHeader("X-Visitor-Id");
+   if(visitor!=null&&visitor.matches("[A-Za-z0-9_-]{8,128}"))return ip+":"+visitor+":public";
+   return ip+":public";
+ }
+ private String clientIp(HttpServletRequest req){String cf=req.getHeader("CF-Connecting-IP");if(cf!=null&&!cf.isBlank())return cf.trim();String forwarded=req.getHeader("X-Forwarded-For");if(forwarded!=null&&!forwarded.isBlank())return forwarded.split(",")[0].trim();return req.getRemoteAddr();}
+ private boolean allow(String key,int limit,long seconds){long now=Instant.now().getEpochSecond();Window w=windows.compute(key,(k,v)->v==null||now-v.started>=seconds?new Window(now,1):new Window(v.started,v.count+1));return w.count<=limit;}
+ private record Window(long started,int count){}
+}
