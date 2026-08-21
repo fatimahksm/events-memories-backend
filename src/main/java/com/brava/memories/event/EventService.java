@@ -24,6 +24,7 @@ public class EventService {
  private String uniqueSlug(String base){String candidate=base;int i=2;while(events.existsBySlug(candidate))candidate=base+"-"+i++;return candidate;}
  @Transactional public Event update(UUID id,EventDtos.Update req){validateRetention(req.expiresAt(),req.mediaDeleteAt());Event e=requireById(id);e.updateBasics(req.names().trim(),clean(req.quote()),clean(req.namesAr()),clean(req.quoteAr()),req.eventDate(),req.expiresAt(),req.mediaDeleteAt(),req.active());return events.save(e);}
  @Transactional public Event updateTheme(Event e,EventDtos.UpdateTheme req){e.updateTheme(req.templateKey(),req.backgroundImageUrl(),req.primaryColor(),req.accentColor(),req.textColor(),req.overlayOpacity(),req.fontFamily(),req.buttonRadiusPx(),req.colorMode(),req.backgroundPositionX(),req.backgroundPositionY(),req.backgroundFit());return events.save(e);}
+ @Transactional public Event updateContent(Event e,EventDtos.OwnerUpdate req){e.updateContent(req.names().trim(),clean(req.quote()),clean(req.namesAr()),clean(req.quoteAr()),req.eventDate());return events.save(e);}
 
  @Transactional public Event extendRetention(UUID id,int days){
   if(days<1||days>365) throw new AppException("INVALID_RETENTION_EXTENSION","Retention extension must be between 1 and 365 days",HttpStatus.BAD_REQUEST);
