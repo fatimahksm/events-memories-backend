@@ -13,14 +13,16 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
 @Service
 public class ThemeAssetService {
     private static final Map<String,String> EXTENSIONS=Map.of("image/jpeg","jpg","image/png","png","image/webp","webp");
-    private final ObjectStorage storage; private final UploadValidationService validation; private final UploadProperties uploads; private final AppProperties properties;
-    public ThemeAssetService(ObjectStorage storage,UploadValidationService validation,UploadProperties uploads,AppProperties properties){this.storage=storage;this.validation=validation;this.uploads=uploads;this.properties=properties;}
+    private final ObjectStorage storage; private final UploadValidationService validation; private final UploadProperties uploads; private final AppProperties properties; private final ThemeAssetRepository assets;
+    public ThemeAssetService(ObjectStorage storage,UploadValidationService validation,UploadProperties uploads,AppProperties properties,ThemeAssetRepository assets){this.storage=storage;this.validation=validation;this.uploads=uploads;this.properties=properties;this.assets=assets;}
+    public List<AdminDtos.Asset> list(){return assets.findAllByOrderByCreatedAtDesc().stream().map(a->new AdminDtos.Asset(a.getId(),a.getUrl(),a.getContentType(),a.getSizeBytes(),a.getCreatedAt())).toList();}
     public AdminDtos.AssetUpload upload(MultipartFile file) {
         String type = file.getContentType();
         if (file.isEmpty() || type == null || !EXTENSIONS.containsKey(type)) {
@@ -39,7 +41,9 @@ public class ThemeAssetService {
         try (InputStream uploadStream = file.getInputStream()) {
             storage.write(key, uploadStream, file.getSize(), type);
             String encoded = Base64.getUrlEncoder().withoutPadding().encodeToString(key.getBytes(StandardCharsets.UTF_8));
-            return new AdminDtos.AssetUpload(properties.storage().publicBaseUrl() + "/api/public/theme-assets/" + encoded);
+            String url = properties.storage().publicBaseUrl() + "/api/public/theme-assets/" + encoded;
+            assets.save(new ThemeAsset(UUID.randomUUID(), url, type, file.getSize()));
+            return new AdminDtos.AssetUpload(url);
         } catch (IOException ex) {
             throw new AppException("BACKGROUND_UPLOAD_FAILED", "Unable to upload the background image", HttpStatus.INTERNAL_SERVER_ERROR);
         }

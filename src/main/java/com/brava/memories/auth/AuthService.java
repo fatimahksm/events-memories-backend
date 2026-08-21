@@ -35,5 +35,16 @@ public class AuthService {
            JwsHeader.with(org.springframework.security.oauth2.jose.jws.MacAlgorithm.HS256).build(), claims)).getTokenValue();
    return new LoginResult(token,new AuthDtos.MeResponse(u.getId().toString(),u.getEmail(),u.getDisplayName(),u.getRole().name()));
  }
+ public LoginResult ownerAccess(String token){
+   AppUser u=users.findByAccessToken(token).filter(x->x.getRole()==UserRole.OWNER).orElseThrow(()->new AppException("INVALID_ACCESS_LINK","This access link is invalid or has expired",HttpStatus.UNAUTHORIZED));
+   if(!u.isEnabled()) throw new AppException("ACCOUNT_DISABLED","This account has been disabled",HttpStatus.UNAUTHORIZED);
+   return issueToken(u);
+ }
  public AuthDtos.MeResponse me(String id){AppUser u=users.findById(java.util.UUID.fromString(id)).orElseThrow(()->new AppException("USER_NOT_FOUND","User not found",HttpStatus.NOT_FOUND));return new AuthDtos.MeResponse(u.getId().toString(),u.getEmail(),u.getDisplayName(),u.getRole().name());}
+ @Transactional
+ public void changePassword(String id,AuthDtos.ChangePasswordRequest req){
+   AppUser u=users.findById(java.util.UUID.fromString(id)).orElseThrow(()->new AppException("USER_NOT_FOUND","User not found",HttpStatus.NOT_FOUND));
+   if(!encoder.matches(req.currentPassword(),u.getPasswordHash())) throw new AppException("INVALID_CREDENTIALS","Current password is incorrect",HttpStatus.UNAUTHORIZED);
+   u.setPasswordHash(encoder.encode(req.newPassword()));
+ }
 }
