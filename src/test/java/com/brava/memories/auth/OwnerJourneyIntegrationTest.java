@@ -100,5 +100,20 @@ class OwnerJourneyIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items").isArray())
                 .andExpect(jsonPath("$.hasMore").value(false));
+
+        Instant from = Instant.now().minus(1, ChronoUnit.DAYS);
+        Instant to = Instant.now().plus(1, ChronoUnit.DAYS);
+        mvc.perform(get("/api/owner/events/{eventId}/media", eventId)
+                        .cookie(auth)
+                        .param("visibility", "PUBLIC")
+                        .param("from", from.toString())
+                        .param("to", to.toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items").isArray())
+                .andExpect(jsonPath("$.totalElements").value(0));
+
+        mvc.perform(get("/api/owner/events/{eventId}/media", eventId).cookie(auth))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items").isArray());
     }
 }
