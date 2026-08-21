@@ -41,4 +41,10 @@ public class AuthService {
    return issueToken(u);
  }
  public AuthDtos.MeResponse me(String id){AppUser u=users.findById(java.util.UUID.fromString(id)).orElseThrow(()->new AppException("USER_NOT_FOUND","User not found",HttpStatus.NOT_FOUND));return new AuthDtos.MeResponse(u.getId().toString(),u.getEmail(),u.getDisplayName(),u.getRole().name());}
+ @Transactional
+ public void changePassword(String id,AuthDtos.ChangePasswordRequest req){
+   AppUser u=users.findById(java.util.UUID.fromString(id)).orElseThrow(()->new AppException("USER_NOT_FOUND","User not found",HttpStatus.NOT_FOUND));
+   if(!encoder.matches(req.currentPassword(),u.getPasswordHash())) throw new AppException("INVALID_CREDENTIALS","Current password is incorrect",HttpStatus.UNAUTHORIZED);
+   u.setPasswordHash(encoder.encode(req.newPassword()));
+ }
 }

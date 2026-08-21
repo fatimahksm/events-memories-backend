@@ -15,6 +15,7 @@ public class AdminController {
  @PostMapping("/owners/{id}/access-token/regenerate") public AdminDtos.Owner regenerateAccessToken(@PathVariable UUID id){return admin.regenerateAccessToken(id);}
  @GetMapping("/events") public List<EventDtos.Summary> allEvents(){return eventRepo.findAll().stream().sorted(Comparator.comparing(Event::getCreatedAt).reversed()).map(EventDtos::summary).toList();}
  @GetMapping("/events/page") public AdminDtos.EventPage eventPage(@RequestParam(defaultValue="0") int page,@RequestParam(defaultValue="10") int size){return admin.eventPage(page,size);}
+ @GetMapping("/theme-assets") public List<AdminDtos.Asset> themeAssets(){return themeAssets.list();}
  @PostMapping(value="/theme-assets",consumes=org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE) @ResponseStatus(HttpStatus.CREATED) public AdminDtos.AssetUpload uploadThemeAsset(@RequestPart("file") org.springframework.web.multipart.MultipartFile file){return themeAssets.upload(file);}
  @PostMapping("/events") @ResponseStatus(HttpStatus.CREATED) public EventDtos.Summary createEvent(@Valid @RequestBody EventDtos.Create req){return EventDtos.summary(events.create(req));}
  @PostMapping("/events/publish") @ResponseStatus(HttpStatus.CREATED) public EventDtos.Summary publishEvent(@Valid @RequestBody AdminDtos.PublishEvent req){return EventDtos.summary(events.createWithTheme(req.event(),req.theme()));}

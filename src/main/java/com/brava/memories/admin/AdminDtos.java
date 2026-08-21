@@ -14,5 +14,6 @@ public final class AdminDtos {
  public record EventItem(EventDtos.Summary event,Owner owner,long mediaCount,long wishCount){}
  public record EventPage(List<EventItem> items,int page,int size,long totalElements,int totalPages){}
  public record AssetUpload(String url){}
+ public record Asset(UUID id,String url,String contentType,long sizeBytes,Instant createdAt){}
  public record PublishEvent(@NotNull @Valid EventDtos.Create event,@NotNull @Valid EventDtos.UpdateTheme theme){}
 }
