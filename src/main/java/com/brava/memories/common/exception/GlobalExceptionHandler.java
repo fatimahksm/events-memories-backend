@@ -1,6 +1,7 @@
 package com.brava.memories.common.exception;
 
 import com.brava.memories.common.api.ApiError;
+import io.sentry.Sentry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
@@ -45,6 +46,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(Exception.class)
     ResponseEntity<ApiError> handleUnexpected(Exception ex) {
         log.error("Unhandled request exception", ex);
+        Sentry.captureException(ex);
         return ResponseEntity.internalServerError().body(ApiError.of("INTERNAL_ERROR", "An unexpected error occurred"));
     }
 }

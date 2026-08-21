@@ -56,6 +56,8 @@ class ProductionSafetyValidatorTest {
                 new AppProperties.Storage("r2", null, "http://localhost:8080", "account", "key", "secret", "bucket"),
                 new AppProperties.Scanning(true, "localhost", 3310, Duration.ofMinutes(2)),
                 new AppProperties.Retention(30, 3, 5),
-                new AppProperties.Bootstrap("admin@brava.test", adminPassword));
+                new AppProperties.Bootstrap("admin@brava.test", adminPassword),
+                new AppProperties.Sentry("", "test"),
+                new AppProperties.Mail("", 587, "", "", "no-reply@brava.test", Duration.ofHours(1)));
     }
 }

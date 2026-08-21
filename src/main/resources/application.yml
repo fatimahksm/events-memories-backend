@@ -34,6 +34,16 @@ management:
 app:
   frontend-url: ${FRONTEND_URL:http://localhost:3000}
   cors-origins: ${CORS_ORIGINS:http://localhost:3000}
+  sentry:
+    dsn: ${SENTRY_DSN:}
+    environment: ${SENTRY_ENVIRONMENT:development}
+  mail:
+    host: ${MAIL_HOST:}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    from-address: ${MAIL_FROM_ADDRESS:no-reply@brava.test}
+    reset-token-ttl: ${RESET_TOKEN_TTL:PT1H}
   security:
     jwt-secret: ${JWT_SECRET:change-this-development-secret-change-this-32bytes}
     jwt-ttl: ${JWT_TTL:PT8H}

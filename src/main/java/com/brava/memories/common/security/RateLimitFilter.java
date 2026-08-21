@@ -8,7 +8,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;import java.time.Instant;import java.util.Set;import java.util.concurrent.*;
 @Component
 public class RateLimitFilter extends OncePerRequestFilter {
- private static final Set<String> AUTH_PATHS=Set.of("/api/auth/login","/api/auth/register","/api/auth/owner-access","/api/auth/event-access");
+ private static final Set<String> AUTH_PATHS=Set.of("/api/auth/login","/api/auth/register","/api/auth/owner-access","/api/auth/event-access","/api/auth/forgot-password","/api/auth/reset-password");
  private static final java.util.regex.Pattern UPLOAD_SESSION_PATH=java.util.regex.Pattern.compile("^/api/public/events/[^/]+/uploads/session$");
  private static final long UPLOAD_BATCH_WINDOW_SECONDS=600;
  private final RateLimitProperties props; private final UploadProperties uploadProps; private final ConcurrentHashMap<String,Window> windows=new ConcurrentHashMap<>();

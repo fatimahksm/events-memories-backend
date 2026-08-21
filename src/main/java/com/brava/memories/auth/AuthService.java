@@ -15,8 +15,8 @@ import java.util.UUID;
 
 @Service
 public class AuthService {
- private final AppUserRepository users; private final EventRepository events; private final PasswordEncoder encoder; private final JwtEncoder jwtEncoder; private final AppProperties props;
- public AuthService(AppUserRepository users,EventRepository events,PasswordEncoder encoder,JwtEncoder jwtEncoder,AppProperties props){this.users=users;this.events=events;this.encoder=encoder;this.jwtEncoder=jwtEncoder;this.props=props;}
+ private final AppUserRepository users; private final EventRepository events; private final PasswordEncoder encoder; private final JwtEncoder jwtEncoder; private final AppProperties props; private final PasswordResetTokenRepository resetTokens; private final EmailService emailService;
+ public AuthService(AppUserRepository users,EventRepository events,PasswordEncoder encoder,JwtEncoder jwtEncoder,AppProperties props,PasswordResetTokenRepository resetTokens,EmailService emailService){this.users=users;this.events=events;this.encoder=encoder;this.jwtEncoder=jwtEncoder;this.props=props;this.resetTokens=resetTokens;this.emailService=emailService;}
  public record LoginResult(String token, AuthDtos.MeResponse user){}
  public LoginResult login(AuthDtos.LoginRequest req){
    AppUser u=users.findByEmailIgnoreCase(req.email().trim()).orElseThrow(()->new AppException("INVALID_CREDENTIALS","Invalid email or password",HttpStatus.UNAUTHORIZED));
@@ -58,5 +58,21 @@ public class AuthService {
    AppUser u=users.findById(java.util.UUID.fromString(id)).orElseThrow(()->new AppException("USER_NOT_FOUND","User not found",HttpStatus.NOT_FOUND));
    if(!encoder.matches(req.currentPassword(),u.getPasswordHash())) throw new AppException("INVALID_CREDENTIALS","Current password is incorrect",HttpStatus.UNAUTHORIZED);
    u.setPasswordHash(encoder.encode(req.newPassword()));
+ }
+ /** Always succeeds from the caller's perspective, whether or not the email exists, to avoid leaking which emails have accounts. */
+ @Transactional
+ public void forgotPassword(String email){
+   users.findByEmailIgnoreCase(email.trim()).filter(AppUser::isEnabled).ifPresent(u->{
+     PasswordResetToken token=resetTokens.save(new PasswordResetToken(UUID.randomUUID(),u,props.mail().resetTokenTtl()));
+     String link=props.frontendUrl()+"/reset-password?token="+token.getToken();
+     emailService.sendPasswordReset(u.getEmail(),link);
+   });
+ }
+ @Transactional
+ public void resetPassword(AuthDtos.ResetPasswordRequest req){
+   PasswordResetToken token=resetTokens.findByToken(req.token()).filter(PasswordResetToken::isValid)
+     .orElseThrow(()->new AppException("INVALID_RESET_TOKEN","This reset link is invalid or has expired",HttpStatus.BAD_REQUEST));
+   token.getUser().setPasswordHash(encoder.encode(req.newPassword()));
+   token.markUsed();
  }
 }

@@ -25,6 +25,19 @@
 
     <dependencies>
 
+        <!-- Error tracking (no-ops unless SENTRY_DSN is configured) -->
+        <dependency>
+            <groupId>io.sentry</groupId>
+            <artifactId>sentry</artifactId>
+            <version>8.53.0</version>
+        </dependency>
+
+        <!-- Password reset emails (no-ops unless MAIL_HOST is configured) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-mail</artifactId>
+        </dependency>
+
         <!-- Web -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

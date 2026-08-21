@@ -12,11 +12,15 @@ public record AppProperties(
         Storage storage,
         Scanning scanning,
         Retention retention,
-        Bootstrap bootstrap
+        Bootstrap bootstrap,
+        Sentry sentry,
+        Mail mail
 ) {
     public record Security(String jwtSecret, Duration jwtTtl, boolean cookieSecure, String visitorHashSecret) {}
     public record Storage(String provider, String localRoot, String publicBaseUrl, String r2AccountId, String r2AccessKeyId, String r2SecretAccessKey, String r2Bucket) {}
     public record Scanning(boolean enabled, String host, int port, Duration timeout) {}
     public record Retention(int defaultDaysAfterExpiry, int warningDaysBeforeDelete, int maxDeletionAttempts) {}
     public record Bootstrap(String adminEmail, String adminPassword) {}
+    public record Sentry(String dsn, String environment) {}
+    public record Mail(String host, int port, String username, String password, String fromAddress, Duration resetTokenTtl) {}
 }
