@@ -32,6 +32,15 @@ public class PublicMediaService {
    return new MediaDtos.CursorPage(items,next,hasMore);
  }
 
+ @Transactional(readOnly=true)
+ public MediaDtos.Page albumPage(String slug,int page,int size){
+   Event e=events.requirePublic(slug);int safeSize=Math.min(Math.max(size,1),60);
+   Page<Media> result=media.findByEventIdAndStatusAndVisibilityOrderByCreatedAtDesc(e.getId(),MediaStatus.READY,MediaVisibility.PUBLIC,PageRequest.of(Math.max(0,page),safeSize));
+   Map<UUID,Long> counts=likeCounts(result.getContent());
+   List<MediaDtos.Item> items=result.getContent().stream().map(m->item(m,counts.getOrDefault(m.getId(),0L))).toList();
+   return new MediaDtos.Page(items,result.getNumber(),result.getSize(),result.getTotalElements(),result.getTotalPages());
+ }
+
  @Transactional
  public MediaDtos.LikeResponse toggleLike(String slug,UUID id,String visitorId){
    Event e=events.requirePublic(slug);if(visitorId==null||visitorId.length()<8||visitorId.length()>128)throw new AppException("INVALID_VISITOR","Invalid visitor identifier",HttpStatus.BAD_REQUEST);
