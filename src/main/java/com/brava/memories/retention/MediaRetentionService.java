@@ -38,7 +38,13 @@ public class MediaRetentionService {
     }
 
     public void deleteStorageObjects(List<Media> items){
-        for(var m:items){ try{ storage.delete(m.getStorageKey()); } catch(Exception ex){ throw new IllegalStateException("Failed deleting media object "+m.getId(),ex); } }
+        for(var m:items){
+            try{
+                storage.delete(m.getStorageKey());
+                if(m.getThumbnailKey()!=null)storage.delete(m.getThumbnailKey());
+                if(m.getRenditionKey()!=null)storage.delete(m.getRenditionKey());
+            }catch(Exception ex){ throw new IllegalStateException("Failed deleting media object "+m.getId(),ex); }
+        }
     }
 
     @Transactional

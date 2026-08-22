@@ -69,6 +69,10 @@ app:
     host: ${CLAMAV_HOST:localhost}
     port: ${CLAMAV_PORT:3310}
     timeout: ${CLAMAV_TIMEOUT:PT2M}
+  video:
+    transcoding-enabled: ${VIDEO_TRANSCODING_ENABLED:true}
+    ffmpeg-path: ${FFMPEG_PATH:ffmpeg}
+    timeout: ${VIDEO_TRANSCODING_TIMEOUT:PT2M}
   processing:
     core-threads: ${MEDIA_PROCESSING_CORE_THREADS:4}
     max-threads: ${MEDIA_PROCESSING_MAX_THREADS:10}

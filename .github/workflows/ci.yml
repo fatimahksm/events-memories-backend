@@ -33,6 +33,13 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
+      - name: Ensure ffmpeg is available (video transcoding tests need it)
+        run: |
+          if ! command -v ffmpeg >/dev/null; then
+            sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
+          fi
+          ffmpeg -version
+
       - name: Run tests
         env:
           DB_URL: jdbc:postgresql://localhost:5432/event_memories
