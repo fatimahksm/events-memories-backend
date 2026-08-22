@@ -15,12 +15,10 @@ public class AuthController {
    return authenticate(service.login(req),response);
  }
  @PostMapping("/register") @ResponseStatus(HttpStatus.CREATED) public AuthDtos.MeResponse register(@Valid @RequestBody AuthDtos.RegisterRequest req,HttpServletResponse response){return authenticate(service.register(req),response);}
- @PostMapping("/owner-access") public AuthDtos.MeResponse ownerAccess(@Valid @RequestBody AuthDtos.OwnerAccessRequest req,HttpServletResponse response){return authenticate(service.ownerAccess(req.token()),response);}
- @PostMapping("/event-access") public AuthDtos.MeResponse eventAccess(@Valid @RequestBody AuthDtos.EventAccessRequest req,HttpServletResponse response){return authenticate(service.eventAccess(req.token()),response);}
  @PostMapping("/forgot-password") @ResponseStatus(HttpStatus.NO_CONTENT) public void forgotPassword(@Valid @RequestBody AuthDtos.ForgotPasswordRequest req){service.forgotPassword(req.email());}
  @PostMapping("/reset-password") @ResponseStatus(HttpStatus.NO_CONTENT) public void resetPassword(@Valid @RequestBody AuthDtos.ResetPasswordRequest req){service.resetPassword(req);}
  @PostMapping("/logout") @ResponseStatus(HttpStatus.NO_CONTENT) public void logout(HttpServletResponse response){response.addHeader(HttpHeaders.SET_COOKIE,ResponseCookie.from("access_token","").httpOnly(true).secure(props.security().cookieSecure()).sameSite("Strict").path("/").maxAge(Duration.ZERO).build().toString());}
- @GetMapping("/me") public AuthDtos.MeResponse me(@org.springframework.security.core.annotation.AuthenticationPrincipal Jwt jwt){return service.me(jwt.getSubject(),jwt.getClaimAsString("eventId"));}
+ @GetMapping("/me") public AuthDtos.MeResponse me(@org.springframework.security.core.annotation.AuthenticationPrincipal Jwt jwt){return service.me(jwt.getSubject());}
  @PutMapping("/me/password") @ResponseStatus(HttpStatus.NO_CONTENT) public void changePassword(@org.springframework.security.core.annotation.AuthenticationPrincipal Jwt jwt,@Valid @RequestBody AuthDtos.ChangePasswordRequest req){service.changePassword(jwt.getSubject(),req);}
  private AuthDtos.MeResponse authenticate(AuthService.LoginResult result,HttpServletResponse response){ResponseCookie cookie=ResponseCookie.from("access_token",result.token()).httpOnly(true).secure(props.security().cookieSecure()).sameSite("Strict").path("/").maxAge(props.security().jwtTtl()).build();response.addHeader(HttpHeaders.SET_COOKIE,cookie.toString());return result.user();}
 }

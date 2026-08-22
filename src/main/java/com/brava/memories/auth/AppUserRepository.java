@@ -4,7 +4,6 @@ import java.util.Optional;
 import java.util.UUID;
 public interface AppUserRepository extends JpaRepository<AppUser, UUID> {
     Optional<AppUser> findByEmailIgnoreCase(String email);
-    Optional<AppUser> findByAccessToken(String accessToken);
     boolean existsByEmailIgnoreCase(String email);
     long countByRole(UserRole role);
     long countByRoleAndEnabled(UserRole role,boolean enabled);

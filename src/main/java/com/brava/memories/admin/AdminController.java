@@ -12,7 +12,6 @@ public class AdminController {
  @GetMapping("/owners") public List<AdminDtos.Owner> owners(){return admin.owners();}
  @PostMapping("/owners") @ResponseStatus(HttpStatus.CREATED) public AdminDtos.Owner createOwner(@Valid @RequestBody AdminDtos.CreateOwner req){return admin.createOwner(req);}
  @PatchMapping("/owners/{id}/enabled") public AdminDtos.Owner enabled(@PathVariable UUID id,@RequestParam boolean value){return admin.setEnabled(id,value);}
- @PostMapping("/owners/{id}/access-token/regenerate") public AdminDtos.Owner regenerateAccessToken(@PathVariable UUID id){return admin.regenerateAccessToken(id);}
  @GetMapping("/events") public List<EventDtos.Summary> allEvents(){return eventRepo.findAll().stream().sorted(Comparator.comparing(Event::getCreatedAt).reversed()).map(EventDtos::summary).toList();}
  @GetMapping("/events/page") public AdminDtos.EventPage eventPage(@RequestParam(defaultValue="0") int page,@RequestParam(defaultValue="10") int size){return admin.eventPage(page,size);}
  @GetMapping("/theme-assets") public List<AdminDtos.Asset> themeAssets(){return themeAssets.list();}
@@ -22,5 +21,4 @@ public class AdminController {
  @PutMapping("/events/{id}") public EventDtos.Summary updateEvent(@PathVariable UUID id,@Valid @RequestBody EventDtos.Update req){return EventDtos.summary(events.update(id,req));}
  @PutMapping("/events/{id}/theme") public EventDtos.Summary updateTheme(@PathVariable UUID id,@Valid @RequestBody EventDtos.UpdateTheme req){return EventDtos.summary(events.updateTheme(events.requireById(id),req));}
  @PostMapping("/events/{id}/retention/extend") public EventDtos.Summary extendRetention(@PathVariable UUID id,@RequestParam int days){return EventDtos.summary(events.extendRetention(id,days));}
- @PostMapping("/events/{id}/access-token/regenerate") public EventDtos.Summary regenerateEventAccessToken(@PathVariable UUID id){return EventDtos.summary(events.regenerateAccessToken(id));}
 }

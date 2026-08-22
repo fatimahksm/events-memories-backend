@@ -5,7 +5,6 @@ import java.time.Instant;
 import java.util.*;
 public interface EventRepository extends JpaRepository<Event, UUID> {
     Optional<Event> findBySlug(String slug);
-    Optional<Event> findByAccessToken(String accessToken);
     List<Event> findByOwnerIdOrderByCreatedAtDesc(UUID ownerId);
     Page<Event> findAllByOrderByCreatedAtDesc(Pageable pageable);
     long countByActiveTrue();
