@@ -47,7 +47,7 @@ public class SecurityConfig {
         http.csrf(csrf -> csrf.disable())
             .cors(cors -> {})
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/actuator/health", "/api/auth/login", "/api/auth/register", "/api/auth/owner-access", "/api/auth/event-access", "/api/public/**").permitAll()
+                .requestMatchers("/actuator/health", "/api/auth/login", "/api/auth/register", "/api/auth/forgot-password", "/api/auth/reset-password", "/api/public/**").permitAll()
                 .requestMatchers("/api/admin/**").hasRole("SUPER_ADMIN")
                 .requestMatchers("/api/owner/**").hasAnyRole("OWNER","SUPER_ADMIN")
                 .anyRequest().authenticated())

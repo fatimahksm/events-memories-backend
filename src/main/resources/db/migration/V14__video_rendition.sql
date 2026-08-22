@@ -1,0 +1,1 @@
+ALTER TABLE media ADD COLUMN rendition_key VARCHAR(500);

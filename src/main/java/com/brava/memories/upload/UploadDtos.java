@@ -8,4 +8,5 @@ public final class UploadDtos {
  public record CreateSession(@NotNull UUID clientUploadId,@NotBlank @Size(max=255) String fileName,@NotBlank @Size(max=100) String contentType,@Positive long size,@NotNull MediaVisibility visibility,@Size(max=100) String guestName){}
  public record Session(UUID mediaId,String uploadUrl,Instant expiresAt){}
  public record Finalize(UUID mediaId,String status){}
+ public record Status(UUID mediaId,String status,boolean rejected){}
 }

@@ -32,6 +32,15 @@ public class PublicMediaService {
    return new MediaDtos.CursorPage(items,next,hasMore);
  }
 
+ @Transactional(readOnly=true)
+ public MediaDtos.Page albumPage(String slug,int page,int size){
+   Event e=events.requirePublic(slug);int safeSize=Math.min(Math.max(size,1),60);
+   Page<Media> result=media.findByEventIdAndStatusAndVisibilityOrderByCreatedAtDesc(e.getId(),MediaStatus.READY,MediaVisibility.PUBLIC,PageRequest.of(Math.max(0,page),safeSize));
+   Map<UUID,Long> counts=likeCounts(result.getContent());
+   List<MediaDtos.Item> items=result.getContent().stream().map(m->item(m,counts.getOrDefault(m.getId(),0L))).toList();
+   return new MediaDtos.Page(items,result.getNumber(),result.getSize(),result.getTotalElements(),result.getTotalPages());
+ }
+
  @Transactional
  public MediaDtos.LikeResponse toggleLike(String slug,UUID id,String visitorId){
    Event e=events.requirePublic(slug);if(visitorId==null||visitorId.length()<8||visitorId.length()>128)throw new AppException("INVALID_VISITOR","Invalid visitor identifier",HttpStatus.BAD_REQUEST);
@@ -40,7 +49,7 @@ public class PublicMediaService {
  }
 
  private Map<UUID,Long> likeCounts(List<Media> rows){if(rows.isEmpty())return Map.of();Map<UUID,Long> out=new HashMap<>();likes.countForMediaIds(rows.stream().map(Media::getId).toList()).forEach(x->out.put(x.getMediaId(),x.getLikeCount()));return out;}
- private MediaDtos.Item item(Media m,long count){return new MediaDtos.Item(m.getId(),m.getMediaType().name(),m.getMimeType(),m.getVisibility().name(),m.getGuestName(),m.getStatus().name(),storage.createDownloadUrl(m.getStorageKey(),Duration.ofMinutes(20)),count,m.getCreatedAt());}
+ private MediaDtos.Item item(Media m,long count){String thumbnailUrl=(m.getThumbnailKey()!=null)?storage.createDownloadUrl(m.getThumbnailKey(),Duration.ofMinutes(20)):null;String renditionUrl=(m.getRenditionKey()!=null)?storage.createDownloadUrl(m.getRenditionKey(),Duration.ofMinutes(20)):null;return new MediaDtos.Item(m.getId(),m.getMediaType().name(),m.getMimeType(),m.getVisibility().name(),m.getGuestName(),m.getStatus().name(),storage.createDownloadUrl(m.getStorageKey(),Duration.ofMinutes(20)),thumbnailUrl,renditionUrl,count,m.getCreatedAt());}
  private String encodeCursor(Media m){String raw=m.getCreatedAt()+"|"+m.getId();return Base64.getUrlEncoder().withoutPadding().encodeToString(raw.getBytes(StandardCharsets.UTF_8));}
  private Cursor decodeCursor(String encoded){if(encoded==null||encoded.isBlank())return null;try{String raw=new String(Base64.getUrlDecoder().decode(encoded),StandardCharsets.UTF_8);String[] p=raw.split("\\|",2);return new Cursor(Instant.parse(p[0]),UUID.fromString(p[1]));}catch(Exception ex){throw new AppException("INVALID_CURSOR","Invalid album cursor",HttpStatus.BAD_REQUEST);}}
  private String hash(String value){try{Mac mac=Mac.getInstance("HmacSHA256");mac.init(new SecretKeySpec(props.security().visitorHashSecret().getBytes(StandardCharsets.UTF_8),"HmacSHA256"));return Base64.getUrlEncoder().withoutPadding().encodeToString(mac.doFinal(value.getBytes(StandardCharsets.UTF_8)));}catch(Exception e){throw new IllegalStateException(e);}}

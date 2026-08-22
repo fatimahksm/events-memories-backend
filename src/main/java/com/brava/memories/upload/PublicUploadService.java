@@ -46,6 +46,14 @@ public class PublicUploadService {
    return new UploadDtos.Finalize(m.getId(),m.getStatus().name());
  }
 
+ public UploadDtos.Status status(String slug,UUID mediaId){
+   Event e=events.requirePublic(slug);
+   Media m=media.findById(mediaId).orElseThrow(()->new AppException("MEDIA_NOT_FOUND","Media not found",HttpStatus.NOT_FOUND));
+   if(!m.getEvent().getId().equals(e.getId()))throw new AppException("MEDIA_NOT_FOUND","Media not found",HttpStatus.NOT_FOUND);
+   boolean rejected=m.getStatus()==MediaStatus.REJECTED||m.getStatus()==MediaStatus.FAILED;
+   return new UploadDtos.Status(m.getId(),m.getStatus().name(),rejected);
+ }
+
  private UploadDtos.Session sessionFor(Media m){String url=storage.createUploadUrl(m.getStorageKey(),m.getMimeType(),m.getFileSize(),props.signedUrlTtl());return new UploadDtos.Session(m.getId(),url,Instant.now().plus(props.signedUrlTtl()));}
  private String cleanName(String v){if(v==null||v.isBlank())return null;return v.trim().replaceAll("[\\p{Cntrl}]","");}
  private String safeExtension(String name){int i=name.lastIndexOf('.');if(i<0)return "";String e=name.substring(i).toLowerCase();return e.matches("\\.(jpg|jpeg|png|webp|mp4|mov)")?e:"";}

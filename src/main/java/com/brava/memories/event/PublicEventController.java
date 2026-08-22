@@ -10,6 +10,7 @@ public class PublicEventController {
  public PublicEventController(EventService events,PublicMediaService media,WishService wishes){this.events=events;this.media=media;this.wishes=wishes;}
  @GetMapping("/{slug}") public EventDtos.PublicEvent get(@PathVariable String slug){return events.publicDto(events.requirePublic(slug));}
  @GetMapping("/{slug}/album") public MediaDtos.CursorPage album(@PathVariable String slug,@RequestParam(required=false) String cursor,@RequestParam(defaultValue="24") int size){return media.album(slug,cursor,size);}
+ @GetMapping("/{slug}/album/paged") public MediaDtos.Page albumPaged(@PathVariable String slug,@RequestParam(defaultValue="0") int page,@RequestParam(defaultValue="24") int size){return media.albumPage(slug,page,size);}
  @PostMapping("/{slug}/media/{mediaId}/like") public MediaDtos.LikeResponse like(@PathVariable String slug,@PathVariable UUID mediaId,@RequestHeader("X-Visitor-Id") String visitor){return media.toggleLike(slug,mediaId,visitor);}
  @PostMapping("/{slug}/wishes") public WishDtos.Item wish(@PathVariable String slug,@Valid @RequestBody WishDtos.Create req){return wishes.create(slug,req);}
 }
