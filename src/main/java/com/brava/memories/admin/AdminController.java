@@ -3,10 +3,12 @@ import com.brava.memories.audit.AuditLogDtos;
 import com.brava.memories.audit.AuditLogService;
 import com.brava.memories.event.*;
 import jakarta.validation.Valid;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
+import java.time.LocalDate;
 import java.util.*;
 @RestController @RequestMapping("/api/admin")
 public class AdminController {
@@ -25,7 +27,15 @@ public class AdminController {
    return owner;
  }
  @GetMapping("/events") public List<EventDtos.Summary> allEvents(){return eventRepo.findAll().stream().sorted(Comparator.comparing(Event::getCreatedAt).reversed()).map(EventDtos::summary).toList();}
- @GetMapping("/events/page") public AdminDtos.EventPage eventPage(@RequestParam(defaultValue="0") int page,@RequestParam(defaultValue="10") int size){return admin.eventPage(page,size);}
+ @GetMapping("/events/page") public AdminDtos.EventPage eventPage(
+     @RequestParam(defaultValue="0") int page,
+     @RequestParam(defaultValue="10") int size,
+     @RequestParam(required=false) String search,
+     @RequestParam(required=false) UUID ownerId,
+     @RequestParam(required=false) String dateField,
+     @RequestParam(required=false) @DateTimeFormat(iso=DateTimeFormat.ISO.DATE) LocalDate from,
+     @RequestParam(required=false) @DateTimeFormat(iso=DateTimeFormat.ISO.DATE) LocalDate to
+ ){return admin.eventPage(page,size,search,ownerId,dateField,from,to);}
  @GetMapping("/theme-assets") public List<AdminDtos.Asset> themeAssets(){return themeAssets.list();}
  @PostMapping(value="/theme-assets",consumes=org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE) @ResponseStatus(HttpStatus.CREATED) public AdminDtos.AssetUpload uploadThemeAsset(@RequestPart("file") org.springframework.web.multipart.MultipartFile file){return themeAssets.upload(file);}
  @PostMapping("/events") @ResponseStatus(HttpStatus.CREATED) public EventDtos.Summary createEvent(@Valid @RequestBody EventDtos.Create req,@AuthenticationPrincipal Jwt jwt){
@@ -51,6 +61,16 @@ public class AdminController {
  @PostMapping("/events/{id}/retention/extend") public EventDtos.Summary extendRetention(@PathVariable UUID id,@RequestParam int days,@AuthenticationPrincipal Jwt jwt){
    EventDtos.Summary event=EventDtos.summary(events.extendRetention(id,days));
    audit(jwt,"EVENT_RETENTION_EXTENDED","EVENT",event.id(),event.names()+" (+"+days+"d)");
+   return event;
+ }
+ @PostMapping("/events/{id}/extend") public EventDtos.Summary extendAccess(@PathVariable UUID id,@RequestParam int days,@AuthenticationPrincipal Jwt jwt){
+   EventDtos.Summary event=EventDtos.summary(events.extendAccess(id,days));
+   audit(jwt,"EVENT_ACCESS_EXTENDED","EVENT",event.id(),event.names()+" (+"+days+"d)");
+   return event;
+ }
+ @PatchMapping("/events/{id}/active") public EventDtos.Summary setActive(@PathVariable UUID id,@RequestParam boolean value,@AuthenticationPrincipal Jwt jwt){
+   EventDtos.Summary event=EventDtos.summary(events.setActive(id,value));
+   audit(jwt,value?"EVENT_ENABLED":"EVENT_DISABLED","EVENT",event.id(),event.names());
    return event;
  }
  @GetMapping("/audit-log") public AuditLogDtos.Page auditLog(@RequestParam(defaultValue="0") int page,@RequestParam(defaultValue="20") int size){return auditLog.page(page,size);}
