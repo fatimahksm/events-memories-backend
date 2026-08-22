@@ -24,4 +24,4 @@ if [ "$MALWARE_SCAN_ENABLED" = "true" ]; then
   done
 fi
 
-exec su -p appuser -s /bin/sh -c "exec java -jar /app/app.jar"
+exec su -p appuser -s /bin/sh -c "exec /opt/java/openjdk/bin/java -jar /app/app.jar"
