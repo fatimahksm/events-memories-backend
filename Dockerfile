@@ -6,9 +6,16 @@ COPY src src
 RUN mvn -q -DskipTests package
 FROM eclipse-temurin:21-jre
 WORKDIR /app
-RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg clamav-daemon clamav-freshclam && rm -rf /var/lib/apt/lists/*
 RUN useradd -r -u 10001 appuser
+# Run clamd on a local TCP port instead of its default unix socket, and let the app
+# reach it via localhost now that it lives in the same container.
+RUN { echo "TCPSocket 3310"; echo "TCPAddr 127.0.0.1"; } >> /etc/clamav/clamd.conf
+# Off by default (e.g. a free/small demo instance) — set MALWARE_SCAN_ENABLED=true
+# on the host once real strangers are uploading, no image rebuild needed.
+ENV CLAMAV_HOST=127.0.0.1 CLAMAV_PORT=3310
 COPY --from=build /app/target/*.jar app.jar
-USER appuser
+COPY docker-entrypoint.sh /app/docker-entrypoint.sh
+RUN chmod +x /app/docker-entrypoint.sh
 EXPOSE 8080
-ENTRYPOINT ["java","-jar","/app/app.jar"]
+ENTRYPOINT ["/app/docker-entrypoint.sh"]
