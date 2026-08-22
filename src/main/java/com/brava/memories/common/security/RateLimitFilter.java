@@ -18,6 +18,11 @@ public class RateLimitFilter extends OncePerRequestFilter {
    String path=req.getRequestURI();int limit=0;long window=60;
    if(AUTH_PATHS.contains(path)&&"POST".equals(req.getMethod())){limit=props.loginAttemptsPerFiveMinutes();window=300;}
    else if(UPLOAD_SESSION_PATH.matcher(path).matches()&&"POST".equals(req.getMethod())){limit=uploadProps.maxFilesPerRequest();window=UPLOAD_BATCH_WINDOW_SECONDS;}
+   // Local-disk stand-in for a direct-to-object-storage PUT: in real deployments (STORAGE_PROVIDER=r2) this
+   // byte transfer goes straight to Cloudflare and never touches this server, so it isn't a mutation to throttle
+   // here. It also never carries X-Visitor-Id (a real presigned PUT couldn't either), so treating it like other
+   // public mutations would collapse every guest behind one shared IP into a single bucket.
+   else if(path.startsWith("/api/public/local-storage/")){}
    else if(path.startsWith("/api/public/")&&!"GET".equals(req.getMethod()))limit=props.publicMutationsPerMinute();
    if(limit>0&&!allow(key(req,path),limit,window)){res.setStatus(429);res.setContentType(MediaType.APPLICATION_JSON_VALUE);res.getWriter().write("{\"code\":\"RATE_LIMITED\",\"message\":\"Too many requests. Please try again later.\"}");return;}
    chain.doFilter(req,res);
