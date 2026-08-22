@@ -38,6 +38,17 @@ public class EventService {
   e.extendRetention(base.plusSeconds(days*86400L));
   return e;
  }
+ @Transactional public Event extendAccess(UUID id,int days){
+  if(days<1||days>365) throw new AppException("INVALID_ACCESS_EXTENSION","Access extension must be between 1 and 365 days",HttpStatus.BAD_REQUEST);
+  Event e=requireById(id);
+  if(e.getRetentionStatus()==EventRetentionStatus.ARCHIVED) throw new AppException("EVENT_ALREADY_ARCHIVED","Archived events cannot be extended",HttpStatus.CONFLICT);
+  Instant expiresBase=e.getExpiresAt().isAfter(Instant.now())?e.getExpiresAt():Instant.now();
+  Instant newExpiresAt=expiresBase.plusSeconds(days*86400L);
+  Instant newDeleteAt=e.getMediaDeleteAt().isAfter(newExpiresAt)?e.getMediaDeleteAt():newExpiresAt.plusSeconds(days*86400L);
+  e.extendAccess(newExpiresAt,newDeleteAt);
+  return e;
+ }
+ @Transactional public Event setActive(UUID id,boolean value){Event e=requireById(id);e.setActive(value);return e;}
  public EventDtos.PublicEvent publicDto(Event e){return new EventDtos.PublicEvent(e.getId(),e.getSlug(),e.getNames(),e.getQuote(),e.getNamesAr(),e.getQuoteAr(),e.getEventDate(),e.getExpiresAt(),EventDtos.theme(e));}
  private void validateRetention(Instant expiresAt,Instant deleteAt){if(!deleteAt.isAfter(expiresAt))throw new AppException("INVALID_RETENTION_DATE","Media delete date must be after expiry",HttpStatus.BAD_REQUEST);}
  private String clean(String value){return value==null||value.isBlank()?null:value.trim();}
