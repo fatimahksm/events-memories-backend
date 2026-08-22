@@ -20,9 +20,6 @@ public class OwnerController {
    if(admin(jwt))return eventRepo.findAll().stream().map(EventDtos::summary).toList();
    return eventRepo.findByOwnerIdOrderByCreatedAtDesc(UUID.fromString(jwt.getSubject())).stream().map(EventDtos::summary).toList();
  }
- @PostMapping("/events") @ResponseStatus(org.springframework.http.HttpStatus.CREATED) public EventDtos.Summary createEvent(@AuthenticationPrincipal Jwt jwt,@Valid @RequestBody EventDtos.OwnerCreate req){
-   return EventDtos.summary(events.createForOwner(UUID.fromString(jwt.getSubject()),req));
- }
  @PutMapping("/events/{eventId}") public EventDtos.Summary content(@PathVariable UUID eventId,@AuthenticationPrincipal Jwt jwt,@Valid @RequestBody EventDtos.OwnerUpdate req){Event e=events.requireOwned(eventId,jwt.getSubject(),admin(jwt));return EventDtos.summary(events.updateContent(e,req));}
  @PutMapping("/events/{eventId}/theme") public EventDtos.Summary theme(@PathVariable UUID eventId,@AuthenticationPrincipal Jwt jwt,@Valid @RequestBody EventDtos.UpdateTheme req){Event e=events.requireOwned(eventId,jwt.getSubject(),admin(jwt));return EventDtos.summary(events.updateTheme(e,req));}
  @PostMapping(value="/theme-assets",consumes=org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE) @ResponseStatus(org.springframework.http.HttpStatus.CREATED) public AdminDtos.AssetUpload uploadThemeAsset(@RequestPart("file") org.springframework.web.multipart.MultipartFile file){return themeAssets.upload(file);}

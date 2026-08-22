@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,9 +29,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class OwnerJourneyIntegrationTest {
     @Autowired MockMvc mvc;
     @Autowired ObjectMapper json;
+    @Autowired AppUserRepository users;
+    @Autowired PasswordEncoder encoder;
 
     @Test
-    void ownerCanRegisterAuthenticateCreateAndOpenEvent() throws Exception {
+    void ownerCanRegisterAuthenticateAndOpenTheEventBravaSetUpForThem() throws Exception {
         String suffix = UUID.randomUUID().toString();
         var registration = mvc.perform(post("/api/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -47,14 +50,25 @@ class OwnerJourneyIntegrationTest {
         mvc.perform(get("/api/auth/me").cookie(auth))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.displayName").value("Journey Owner"));
+        String ownerId = json.readTree(registration.getResponse().getContentAsByteArray()).get("id").asString();
+
+        // Events are created for an owner by Super Admin, never by the owner themselves.
+        String adminEmail = "journey-admin-" + suffix + "@example.com";
+        users.save(new AppUser(UUID.randomUUID(), adminEmail, encoder.encode("JourneyAdminPass123!"), "Journey Admin", UserRole.SUPER_ADMIN));
+        var adminLogin = mvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json.writeValueAsBytes(Map.of("email", adminEmail, "password", "JourneyAdminPass123!"))))
+                .andExpect(status().isOk()).andReturn();
+        Cookie admin = adminLogin.getResponse().getCookie("access_token");
 
         String slug = "journey-" + suffix;
         Instant expiry = Instant.now().plus(2, ChronoUnit.DAYS);
         Instant deleteAt = expiry.plus(14, ChronoUnit.DAYS);
-        var creation = mvc.perform(post("/api/owner/events")
-                        .cookie(auth)
+        var creation = mvc.perform(post("/api/admin/events")
+                        .cookie(admin)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json.writeValueAsBytes(Map.of(
+                                "ownerId", ownerId,
                                 "names", "Test Celebration",
                                 "quote", "A complete owner journey",
                                 "namesAr", "احتفال تجريبي",
