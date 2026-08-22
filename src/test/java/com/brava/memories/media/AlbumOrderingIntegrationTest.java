@@ -1,5 +1,8 @@
 package com.brava.memories.media;
 
+import com.brava.memories.auth.AppUser;
+import com.brava.memories.auth.AppUserRepository;
+import com.brava.memories.auth.UserRole;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.Cookie;
@@ -8,6 +11,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MvcResult;
 
@@ -30,6 +34,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class AlbumOrderingIntegrationTest {
     @Autowired org.springframework.test.web.servlet.MockMvc mvc;
     @Autowired ObjectMapper json;
+    @Autowired AppUserRepository users;
+    @Autowired PasswordEncoder encoder;
 
     private static final byte[] JPEG_BYTES = {(byte) 0xFF, (byte) 0xD8, (byte) 0xFF, (byte) 0xE0, 0, 0, 0, 0, 't', 'e', 's', 't'};
 
@@ -68,27 +74,43 @@ class AlbumOrderingIntegrationTest {
 
     private String createEventAndGetSlug() throws Exception {
         String suffix = UUID.randomUUID().toString();
-        var registration = mvc.perform(post("/api/auth/register")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json.writeValueAsBytes(Map.of(
-                                "displayName", "Album Order Owner",
-                                "email", "album-order-" + suffix + "@example.com",
-                                "password", "StrongPass123!"))))
-                .andExpect(status().isCreated())
-                .andReturn();
-        Cookie auth = registration.getResponse().getCookie("access_token");
+        Cookie admin = loginAsFreshAdmin(suffix);
+        String ownerId = createOwner(admin, suffix);
 
         String slug = "album-order-" + suffix;
-        mvc.perform(post("/api/owner/events")
-                        .cookie(auth)
+        mvc.perform(post("/api/admin/events")
+                        .cookie(admin)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json.writeValueAsBytes(Map.of(
+                                "ownerId", ownerId,
                                 "names", "Album Order Event",
                                 "expiresAt", Instant.now().plus(2, ChronoUnit.DAYS).toString(),
                                 "mediaDeleteAt", Instant.now().plus(16, ChronoUnit.DAYS).toString(),
                                 "slug", slug))))
                 .andExpect(status().isCreated());
         return slug;
+    }
+
+    private Cookie loginAsFreshAdmin(String suffix) throws Exception {
+        String adminEmail = "album-order-admin-" + suffix + "@example.com";
+        users.save(new AppUser(UUID.randomUUID(), adminEmail, encoder.encode("AlbumOrderAdminPass123!"), "Album Order Admin", UserRole.SUPER_ADMIN));
+        var login = mvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json.writeValueAsBytes(Map.of("email", adminEmail, "password", "AlbumOrderAdminPass123!"))))
+                .andExpect(status().isOk()).andReturn();
+        return login.getResponse().getCookie("access_token");
+    }
+
+    private String createOwner(Cookie admin, String suffix) throws Exception {
+        var result = mvc.perform(post("/api/admin/owners")
+                        .cookie(admin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json.writeValueAsBytes(Map.of(
+                                "displayName", "Album Order Owner",
+                                "email", "album-order-" + suffix + "@example.com",
+                                "password", "OwnerPass1234"))))
+                .andExpect(status().isCreated()).andReturn();
+        return json.readTree(result.getResponse().getContentAsByteArray()).get("id").asString();
     }
 
     private String uploadAndAwaitReady(String slug, String fileName) throws Exception {

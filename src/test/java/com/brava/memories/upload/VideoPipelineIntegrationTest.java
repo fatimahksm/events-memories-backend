@@ -1,5 +1,8 @@
 package com.brava.memories.upload;
 
+import com.brava.memories.auth.AppUser;
+import com.brava.memories.auth.AppUserRepository;
+import com.brava.memories.auth.UserRole;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.Cookie;
@@ -8,6 +11,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
@@ -36,6 +40,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class VideoPipelineIntegrationTest {
     @Autowired MockMvc mvc;
     @Autowired ObjectMapper json;
+    @Autowired AppUserRepository users;
+    @Autowired PasswordEncoder encoder;
 
     @Test
     void guestVideoUploadEndsUpWithAPosterAndAWebCompatibleRendition() throws Exception {
@@ -51,12 +57,22 @@ class VideoPipelineIntegrationTest {
                 .andExpect(status().isCreated())
                 .andReturn();
         Cookie auth = registration.getResponse().getCookie("access_token");
+        String ownerId = json.readTree(registration.getResponse().getContentAsByteArray()).get("id").asString();
+
+        String adminEmail = "video-pipeline-admin-" + suffix + "@example.com";
+        users.save(new AppUser(UUID.randomUUID(), adminEmail, encoder.encode("VideoPipelineAdminPass123!"), "Video Pipeline Admin", UserRole.SUPER_ADMIN));
+        var adminLogin = mvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json.writeValueAsBytes(Map.of("email", adminEmail, "password", "VideoPipelineAdminPass123!"))))
+                .andExpect(status().isOk()).andReturn();
+        Cookie admin = adminLogin.getResponse().getCookie("access_token");
 
         String slug = "video-pipeline-" + suffix;
-        var creation = mvc.perform(post("/api/owner/events")
-                        .cookie(auth)
+        var creation = mvc.perform(post("/api/admin/events")
+                        .cookie(admin)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json.writeValueAsBytes(Map.of(
+                                "ownerId", ownerId,
                                 "names", "Video Pipeline Event",
                                 "expiresAt", Instant.now().plus(2, ChronoUnit.DAYS).toString(),
                                 "mediaDeleteAt", Instant.now().plus(16, ChronoUnit.DAYS).toString(),
