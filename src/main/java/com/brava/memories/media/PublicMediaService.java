@@ -35,7 +35,7 @@ public class PublicMediaService {
  @Transactional(readOnly=true)
  public MediaDtos.Page albumPage(String slug,int page,int size){
    Event e=events.requirePublic(slug);int safeSize=Math.min(Math.max(size,1),60);
-   Page<Media> result=media.findByEventIdAndStatusAndVisibilityOrderByCreatedAtDesc(e.getId(),MediaStatus.READY,MediaVisibility.PUBLIC,PageRequest.of(Math.max(0,page),safeSize));
+   Page<Media> result=media.findPublicOrderedByLikes(e.getId(),MediaStatus.READY,MediaVisibility.PUBLIC,PageRequest.of(Math.max(0,page),safeSize));
    Map<UUID,Long> counts=likeCounts(result.getContent());
    List<MediaDtos.Item> items=result.getContent().stream().map(m->item(m,counts.getOrDefault(m.getId(),0L))).toList();
    return new MediaDtos.Page(items,result.getNumber(),result.getSize(),result.getTotalElements(),result.getTotalPages());

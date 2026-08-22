@@ -8,8 +8,22 @@ import java.time.Instant;
 import java.util.*;
 
 public interface MediaRepository extends JpaRepository<Media, UUID>, JpaSpecificationExecutor<Media> {
-    Page<Media> findByEventIdAndStatusAndVisibilityOrderByCreatedAtDesc(UUID eventId, MediaStatus status, MediaVisibility visibility, Pageable pageable);
     Page<Media> findByEventIdOrderByCreatedAtDesc(UUID eventId, Pageable pageable);
+
+    @Query(
+      value = """
+        select m from Media m
+        left join MediaLike l on l.media = m
+        where m.event.id = :eventId and m.status = :status and m.visibility = :visibility
+        group by m
+        order by count(l.id) desc, m.createdAt desc
+        """,
+      countQuery = """
+        select count(m) from Media m
+        where m.event.id = :eventId and m.status = :status and m.visibility = :visibility
+        """
+    )
+    Page<Media> findPublicOrderedByLikes(@Param("eventId") UUID eventId, @Param("status") MediaStatus status, @Param("visibility") MediaVisibility visibility, Pageable pageable);
     List<Media> findByEventIdAndStatus(UUID eventId, MediaStatus status);
     List<Media> findByEventId(UUID eventId);
     Optional<Media> findByEventIdAndClientUploadId(UUID eventId, UUID clientUploadId);
