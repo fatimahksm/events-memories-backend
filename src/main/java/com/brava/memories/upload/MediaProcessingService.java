@@ -10,6 +10,8 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.*;
 import java.util.UUID;
 
@@ -59,30 +61,37 @@ public class MediaProcessingService {
    }catch(Exception ex){log.warn("Thumbnail generation failed for media {}: {}",m.id(),ex.getMessage());return null;}
  }
 
- /** Best-effort poster frame for a video, stored the same way an image thumbnail is. */
+ /** Best-effort poster frame for a video, stored the same way an image thumbnail is. A poster
+  *  frame is small, but streamed from its temp file for the same reason the rendition below is —
+  *  consistency, and so ffmpeg's temp output never needs a second full in-memory copy. */
  private String generatePoster(MediaSnapshot m,String finalKey){
+   Path poster=null;
    try{
-     byte[] poster;
      try(InputStream in=storage.open(finalKey)){poster=video.extractPosterFrame(in);}
      if(poster==null)return null;
      String posterKey="events/"+m.eventId()+"/thumb/"+m.id()+".jpg";
-     storage.write(posterKey,new ByteArrayInputStream(poster),poster.length,"image/jpeg");
+     try(InputStream in=Files.newInputStream(poster)){storage.write(posterKey,in,Files.size(poster),"image/jpeg");}
      return posterKey;
    }catch(Exception ex){log.warn("Poster frame extraction failed for media {}: {}",m.id(),ex.getMessage());return null;}
+   finally{deleteQuietly(poster);}
  }
 
  /** Best-effort universally-playable H.264/AAC copy. The original (possibly HEVC) file is untouched
-  *  and stays available for download; playback prefers this rendition when present. */
+  *  and stays available for download; playback prefers this rendition when present. Streamed from
+  *  ffmpeg's temp output file straight into storage — reading a 100+MB rendition fully into a
+  *  byte[] first is exactly what OOM'd this on a small instance. */
  private String generateRendition(MediaSnapshot m,String finalKey){
+   Path rendition=null;
    try{
-     byte[] rendition;
      try(InputStream in=storage.open(finalKey)){rendition=video.transcodeToH264(in);}
      if(rendition==null)return null;
      String renditionKey="events/"+m.eventId()+"/web/"+m.id()+".mp4";
-     storage.write(renditionKey,new ByteArrayInputStream(rendition),rendition.length,"video/mp4");
+     try(InputStream in=Files.newInputStream(rendition)){storage.write(renditionKey,in,Files.size(rendition),"video/mp4");}
      return renditionKey;
    }catch(Exception ex){log.warn("Video rendition failed for media {}: {}",m.id(),ex.getMessage());return null;}
+   finally{deleteQuietly(rendition);}
  }
+ private void deleteQuietly(Path p){if(p!=null)try{Files.deleteIfExists(p);}catch(Exception ignored){}}
 
  private MediaSnapshot claim(UUID id,boolean staleRecovery){return tx.execute(status->{Media m=mediaRepo.findByIdForUpdate(id).orElse(null);if(m==null)return null;if(!staleRecovery&&m.getStatus()!=MediaStatus.UPLOADED)return null;if(staleRecovery&&(m.getStatus()!=MediaStatus.SCANNING||m.getProcessingStartedAt()==null||m.getProcessingStartedAt().isAfter(Instant.now().minus(Duration.ofMinutes(10)))))return null;m.markScanning();return new MediaSnapshot(m.getId(),m.getEvent().getId(),m.getStorageKey(),m.getMimeType(),m.getFileSize(),m.getMediaType());});}
  private void ready(UUID id,String key,String thumbnailKey,String renditionKey){tx.executeWithoutResult(s->{Media m=mediaRepo.findByIdForUpdate(id).orElse(null);if(m!=null&&m.getStatus()==MediaStatus.SCANNING){m.markReady(key);if(thumbnailKey!=null)m.setThumbnailKey(thumbnailKey);if(renditionKey!=null)m.setRenditionKey(renditionKey);}});}
