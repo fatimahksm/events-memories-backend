@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Duration;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -20,21 +21,28 @@ class VideoTranscodingServiceTest {
 
     @Test
     void transcodesAGenuineHevcVideoToPlayableH264() throws Exception {
-        byte[] rendition = service.transcodeToH264(sampleVideo());
-
-        assertThat(rendition).isNotNull();
-        assertThat(rendition.length).isGreaterThan(0);
-        assertThat(probeCodec(rendition, "v:0")).isEqualTo("h264");
-        assertThat(probePixelFormat(rendition)).isEqualTo("yuv420p");
+        Path rendition = service.transcodeToH264(sampleVideo());
+        try {
+            assertThat(rendition).isNotNull();
+            assertThat(Files.size(rendition)).isGreaterThan(0);
+            assertThat(probeCodec(rendition, "v:0")).isEqualTo("h264");
+            assertThat(probePixelFormat(rendition)).isEqualTo("yuv420p");
+        } finally {
+            if (rendition != null) Files.deleteIfExists(rendition);
+        }
     }
 
     @Test
     void extractsAPosterFrameFromAGenuineHevcVideo() throws Exception {
-        byte[] poster = service.extractPosterFrame(sampleVideo());
-
-        assertThat(poster).isNotNull();
-        assertThat(poster.length).isGreaterThan(0);
-        assertThat(new String(java.util.Arrays.copyOfRange(poster, 6, 10))).isEqualTo("JFIF");
+        Path poster = service.extractPosterFrame(sampleVideo());
+        try {
+            assertThat(poster).isNotNull();
+            assertThat(Files.size(poster)).isGreaterThan(0);
+            byte[] header = Files.readAllBytes(poster);
+            assertThat(new String(java.util.Arrays.copyOfRange(header, 6, 10))).isEqualTo("JFIF");
+        } finally {
+            if (poster != null) Files.deleteIfExists(poster);
+        }
     }
 
     @Test
@@ -46,32 +54,26 @@ class VideoTranscodingServiceTest {
 
     private InputStream sampleVideo() {
         try {
-            return new ByteArrayInputStream(Files.readAllBytes(java.nio.file.Path.of("src/test/resources/fixtures/sample-hevc.mp4")));
+            return new ByteArrayInputStream(Files.readAllBytes(Path.of("src/test/resources/fixtures/sample-hevc.mp4")));
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
     }
 
-    private String probeCodec(byte[] video, String stream) throws Exception {
+    private String probeCodec(Path video, String stream) throws Exception {
         return ffprobe(video, "stream=codec_name", stream);
     }
 
-    private String probePixelFormat(byte[] video) throws Exception {
+    private String probePixelFormat(Path video) throws Exception {
         return ffprobe(video, "stream=pix_fmt", "v:0");
     }
 
-    private String ffprobe(byte[] video, String entries, String stream) throws Exception {
-        var tmp = Files.createTempFile("probe-", ".mp4");
-        try {
-            Files.write(tmp, video);
-            Process p = new ProcessBuilder("ffprobe", "-v", "error", "-select_streams", stream,
-                    "-show_entries", entries, "-of", "csv=p=0", tmp.toString())
-                    .redirectErrorStream(true).start();
-            String output = new String(p.getInputStream().readAllBytes()).trim();
-            p.waitFor();
-            return output;
-        } finally {
-            Files.deleteIfExists(tmp);
-        }
+    private String ffprobe(Path video, String entries, String stream) throws Exception {
+        Process p = new ProcessBuilder("ffprobe", "-v", "error", "-select_streams", stream,
+                "-show_entries", entries, "-of", "csv=p=0", video.toString())
+                .redirectErrorStream(true).start();
+        String output = new String(p.getInputStream().readAllBytes()).trim();
+        p.waitFor();
+        return output;
     }
 }

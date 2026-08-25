@@ -51,7 +51,10 @@ public class VideoTranscodingService {
         }
     }
 
-    public byte[] transcodeToH264(InputStream video) {
+    /** Returns the temp file holding the transcoded output — the caller owns deleting it once
+     *  it's been streamed elsewhere (e.g. into object storage). Reading a rendition of a
+     *  100+MB source fully into a byte[] first reliably blew the heap on a small instance. */
+    public Path transcodeToH264(InputStream video) {
         if (!ffmpegAvailable) return null;
         Path input = null;
         try {
@@ -69,14 +72,15 @@ public class VideoTranscodingService {
         }
     }
 
-    public byte[] extractPosterFrame(InputStream video) {
+    /** Same temp-file-ownership contract as {@link #transcodeToH264}. */
+    public Path extractPosterFrame(InputStream video) {
         if (!ffmpegAvailable) return null;
         Path input = null;
         try {
             input = materializeInput(video);
             // Skip the first half-second (often a black/blank frame on some cameras); a clip shorter
             // than that produces an empty output, so fall back to the very first frame — always safe.
-            byte[] frame = runFfmpegOnFile(input, ".jpg", "-ss", "00:00:00.5", "-vframes", "1", "-update", "1", "-vf", "scale=" + POSTER_WIDTH + ":-1");
+            Path frame = runFfmpegOnFile(input, ".jpg", "-ss", "00:00:00.5", "-vframes", "1", "-update", "1", "-vf", "scale=" + POSTER_WIDTH + ":-1");
             if (frame != null) return frame;
             return runFfmpegOnFile(input, ".jpg", "-vframes", "1", "-update", "1", "-vf", "scale=" + POSTER_WIDTH + ":-1");
         } catch (Exception ex) {
@@ -93,7 +97,9 @@ public class VideoTranscodingService {
         return input;
     }
 
-    private byte[] runFfmpegOnFile(Path input, String outputSuffix, String... args) {
+    /** Returns the output temp file on success (caller must delete it); always cleans it up itself
+     *  on any failure path, since in that case nobody else will ever see the Path to do so. */
+    private Path runFfmpegOnFile(Path input, String outputSuffix, String... args) {
         Path output = null;
         try {
             output = Files.createTempFile("video-out-", outputSuffix);
@@ -112,20 +118,24 @@ public class VideoTranscodingService {
             if (!finished) {
                 process.destroyForcibly();
                 log.warn("ffmpeg timed out after {}", props.timeout());
+                deleteQuietly(output);
                 return null;
             }
             drained.join();
             if (process.exitValue() != 0) {
                 log.warn("ffmpeg exited with {}: {}", process.exitValue(), drained.lastLine());
+                deleteQuietly(output);
                 return null;
             }
-            long size = Files.size(output);
-            return size == 0 ? null : Files.readAllBytes(output);
+            if (Files.size(output) == 0) {
+                deleteQuietly(output);
+                return null;
+            }
+            return output;
         } catch (Exception ex) {
             log.warn("Video processing failed: {}", ex.getMessage());
-            return null;
-        } finally {
             deleteQuietly(output);
+            return null;
         }
     }
 
